@@ -1,0 +1,21 @@
+{
+  "name": "Java Development",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "mounts": [
+    {
+      "source": "${localEnv:HOME}/.config/nvim",
+      "target": "/root/.config/nvim",
+      "type": "bind"
+    },
+    {
+      "source": "${localEnv:HOME}/.tmux.conf",
+      "target": "/root/.tmux.conf",
+      "type": "bind"
+    }
+  ],
+  "runArgs": ["--network=host"],
+  "postCreateCommand": "java -version && echo 'Public key:' && cat /root/.ssh/id_ed25519.pub && echo 'Maven version:' && mvn -v",
+  "remoteUser": "root"
+}
