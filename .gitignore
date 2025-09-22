@@ -49,9 +49,6 @@ local.properties
 # Keep only the .gitkeep files in the data directories to ensure the directories are tracked
 data/*
 !data/.gitkeep
-!data/storm/
 !data/storm/.gitkeep
-!data/zk/
 !data/zk/.gitkeep
-!data/zk-log/
 !data/zk-log/.gitkeep
