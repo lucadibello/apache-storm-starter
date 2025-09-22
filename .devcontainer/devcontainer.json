@@ -10,12 +10,12 @@
       "type": "bind"
     },
     {
-      "source": "${localEnv:HOME}/.tmux.conf",
+      "source": "${localEnv:HOME}/.tmux.alpine.conf",
       "target": "/root/.tmux.conf",
       "type": "bind"
     }
   ],
-  "runArgs": ["--network=host"],
+  "runArgs": ["--network=storm-net", "--name", "storm-devcontainer"],
   "postCreateCommand": "java -version && echo 'Public key:' && cat /root/.ssh/id_ed25519.pub && echo 'Maven version:' && mvn -v",
   "remoteUser": "root"
 }
