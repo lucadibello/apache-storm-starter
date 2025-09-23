@@ -28,6 +28,7 @@ services:
     <<: *storm-common
     container_name: storm-nimbus
     command: ["storm", "nimbus"]
+    hostname: "nimbus"
     depends_on:
       - zookeeper
     ports:
