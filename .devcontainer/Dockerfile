@@ -35,6 +35,10 @@ RUN set -eux; \
   ln -s "${STORM_HOME}/bin/storm" /usr/local/bin/storm; \
   rm -f /tmp/storm.tgz
 
+# Create a basic Storm config file to connect to remote Nimbus service (referenced by service name as we are in the same Docker network)
+RUN mkdir -p /root/.storm \
+ && echo 'nimbus.seeds: ["nimbus"]' > /root/.storm/storm.yaml
+
 WORKDIR /root
 
 # Install tmux plugin manager + plugins + generate SSH keys
