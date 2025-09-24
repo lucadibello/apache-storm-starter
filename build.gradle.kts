@@ -1,3 +1,7 @@
+import org.gradle.api.file.DuplicatesStrategy
+import org.gradle.api.tasks.JavaExec
+import org.gradle.jvm.tasks.Jar
+
 plugins {
     // Apply the application plugin to add support for building a CLI application in Java.
     application
@@ -42,4 +46,34 @@ sourceSets {
 tasks.named<Test>("test") {
     // Use JUnit Platform for unit tests.
     useJUnitPlatform()
+}
+
+tasks.withType<Copy> {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
+tasks.named<JavaExec>("run") {
+    val prodFlag = System.getProperty("storm.prod")
+    if (!prodFlag.isNullOrBlank()) {
+        systemProperty("storm.prod", prodFlag)
+    }
+}
+
+tasks.named<Jar>("jar") {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    manifest {
+        attributes["Main-Class"] = application.mainClass.get()
+    }
+    from({
+        configurations.runtimeClasspath.get()
+            .filter { it.name.endsWith(".jar") }
+            .filterNot { file ->
+                val lowerName = file.name.lowercase()
+                lowerName.startsWith("storm-") || lowerName.contains("storm-client")
+            }
+            .map { zipTree(it) }
+    }) {
+        exclude("META-INF/*.SF", "META-INF/*.RSA", "META-INF/*.DSA", "META-INF/*.EC", "META-INF/MANIFEST.MF")
+        exclude("defaults.yaml")
+    }
 }
