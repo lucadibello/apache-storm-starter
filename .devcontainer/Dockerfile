@@ -1,66 +1,93 @@
+#
+# Stage 1: Storm (cached by version)
+#
+FROM alpine:3.21 AS storm
+ARG STORM_VERSION=2.8.2
+ARG APACHE_MIRROR=https://dlcdn.apache.org/storm
+
+RUN --mount=type=cache,target=/var/cache/apk \
+    apk add --no-cache curl ca-certificates tar gzip && update-ca-certificates
+
+WORKDIR /opt
+RUN set -eux; \
+  curl -fL "${APACHE_MIRROR}/apache-storm-${STORM_VERSION}/apache-storm-${STORM_VERSION}.tar.gz" -o storm.tgz; \
+  tar -xzf storm.tgz; rm -f storm.tgz
+
+#
+# Stage 2: Neovim builder (official Make flow)
+#
+FROM alpine:3.21 AS nvim-builder
+
+ARG NVIM_REF=stable
+ARG CMAKE_BUILD_TYPE=RelWithDebInfo
+ENV CMAKE_INSTALL_PREFIX=/nvim-out
+
+# Build prereqs per wiki (cmake+ninja+gettext, toolchain, git, curl, unzip); ccache is auto-used
+RUN --mount=type=cache,target=/var/cache/apk \
+    apk add --no-cache \
+      build-base cmake ninja gettext gettext-dev \
+      libtool autoconf automake \
+      pkgconfig coreutils curl unzip git ccache
+
+WORKDIR /src/neovim
+
+# NOTE: Result goes to /nvim-out (bin/nvim, share/runtime, etc.)
+RUN git clone --filter=blob:none --depth 1 --branch "${NVIM_REF}" https://github.com/neovim/neovim . && \
+    make CMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} && \
+    make CMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX} install
+
+
+############################
+## Final image
+############################
 FROM alpine:3.21
 
-# Install required packages + Neovim from registry
-RUN apk add --no-cache \
-  bash curl tar gzip tmux git openssh zip unzip openjdk21 \
-  build-base gcc g++ cmake gettext gettext-dev \
-  python3 py3-pip nodejs npm \
-  ripgrep fzf lazygit neovim \
-  maven gradle
+# Base tools (runtime); keep dev stuff out of final image
+RUN --mount=type=cache,target=/var/cache/apk \
+    apk add --no-cache \
+      bash curl ca-certificates tar gzip tmux git openssh zip unzip \
+      openjdk21-jdk \
+      python3 py3-pip \
+      nodejs npm \
+      ripgrep fzf lazygit \
+      maven gradle \
+      # minimal runtime libs Neovim may link against
+      libstdc++ gettext-libs ncurses-terminfo-base \
+    && update-ca-certificates
 
-# Settings
-ARG STORM_VERSION=2.8.2
-ENV STORM_HOME=/opt/storm
+# QoL
+RUN ln -sf /usr/bin/python3 /usr/bin/python
+
+# Java/Gradle env
 ENV JAVA_HOME=/usr/lib/jvm/java-21-openjdk
-
-# Set Java 21 as the default JDK/JRE
 RUN ln -sfn /usr/lib/jvm/java-21-openjdk /usr/lib/jvm/default-jvm && \
-  ln -sfn /usr/lib/jvm/java-21-openjdk /usr/lib/jvm/default-jre
-
-# Put JDK 21 **before** /usr/bin on PATH
-ENV PATH="$JAVA_HOME/bin:$PATH"
-
-# Make Gradle use JDK 21 (daemon + toolchains)
+    ln -sfn /usr/lib/jvm/java-21-openjdk /usr/lib/jvm/default-jre
+ENV PATH="${JAVA_HOME}/bin:${PATH}"
 ENV GRADLE_OPTS="-Dorg.gradle.java.home=/usr/lib/jvm/java-21-openjdk"
 
-# Install Apache Storm CLI directly from Apache official mirror
-# NOTE:
-# - The official apache archive is too slow (https://archive.apache.org/dist/storm/apache-storm-${STORM_VERSION}/apache-storm-${STORM_VERSION}.tar.gz)
-# - Running from github source is not allowed (storm crashes and warns about this)
-RUN set -eux; \
-  curl -fL https://dlcdn.apache.org/storm/apache-storm-${STORM_VERSION}/apache-storm-${STORM_VERSION}.tar.gz -o /tmp/storm.tgz; \
-  mkdir -p /opt; \
-  tar -xzf /tmp/storm.tgz -C /opt; \
-  ln -s "/opt/apache-storm-${STORM_VERSION}" "${STORM_HOME}"; \
-  ln -s "${STORM_HOME}/bin/storm" /usr/local/bin/storm; \
-  rm -f /tmp/storm.tgz
+# ---- Apache Storm (from cached stage) ----
+ARG STORM_VERSION=2.8.2
+ENV STORM_HOME=/opt/storm
+COPY --from=storm /opt/apache-storm-${STORM_VERSION} /opt/apache-storm-${STORM_VERSION}
+RUN ln -s "/opt/apache-storm-${STORM_VERSION}" "${STORM_HOME}" && \
+    ln -s "${STORM_HOME}/bin/storm" /usr/local/bin/storm
 
-# Create a basic Storm config file to connect to remote Nimbus service (referenced by service name as we are in the same Docker network)
-RUN mkdir -p /root/.storm \
- && echo 'nimbus.seeds: ["nimbus"]' > /root/.storm/storm.yaml
+# Minimal Storm client config (nimbus by service name)
+RUN mkdir -p /root/.storm && \
+    printf 'nimbus.seeds: ["nimbus"]\n' > /root/.storm/storm.yaml
 
 WORKDIR /root
 
-# Install tmux plugin manager + plugins + generate SSH keys
-RUN git clone https://github.com/tmux-plugins/tpm .tmux/plugins/tpm && \
-  TMUX_PLUGIN_MANAGER_PATH=~/.tmux/plugins/tpm ~/.tmux/plugins/tpm/bin/install_plugins && \
-  ssh-keygen -t ed25519 -f /root/.ssh/id_ed25519 -N ""
+# ---- Neovim (built from source) ----
+COPY --from=nvim-builder /nvim-out/ /usr/local/
+# sanity check (optional)
+RUN nvim --version | head -n 3
 
-# WARNING: currently the two installations below are commented out as we may not need them immediately!
-# NOTE: Install PMD (Static Code Analyzer)
-# WORKDIR /tmp
-# RUN wget https://github.com/pmd/pmd/releases/download/pmd_releases%2F7.7.0/pmd-dist-7.7.0-bin.zip && \
-#   unzip pmd-dist-7.7.0-bin.zip && \
-#   mv pmd-bin-7.7.0 /opt/pmd && \
-#   rm pmd-dist-7.7.0-bin.zip
+# Tmux TPM + SSH key (optional; consider moving to runtime init if you want deterministic images)
+RUN git clone https://github.com/tmux-plugins/tpm /root/.tmux/plugins/tpm && \
+    TMUX_PLUGIN_MANAGER_PATH=/root/.tmux/plugins/tpm /root/.tmux/plugins/tpm/bin/install_plugins && \
+    mkdir -p /root/.ssh && \
+    ssh-keygen -t ed25519 -f /root/.ssh/id_ed25519 -N ""
 
-# NOTE: Install SonarQube Scanner (Static Code Analysis Tool)
-# RUN wget https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-6.2.1.4610.zip && \
-#   unzip sonar-scanner-cli-6.2.1.4610.zip && \
-#   mv sonar-scanner-6.2.1.4610 /opt/sonar-scanner && \
-#   rm sonar-scanner-cli-6.2.1.4610.zip
-# Add binaries to PATH
-# ENV PATH=$PATH:/opt/pmd/bin:/opt/sonar-scanner/bin
-
-# Set the default working directory
+# Default workspace
 WORKDIR /workspace
