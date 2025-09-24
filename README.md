@@ -55,6 +55,7 @@ Tip: remove `data/histogram.txt` between runs if you prefer a clean snapshot.
 Need to submit directly from the Gradle task? Use `STORM_PROD=true ./gradlew run`, `./gradlew run -Dstorm.prod=true`, or pass an explicit flag with `./gradlew run --args='--prod'` so the topology is submitted to Nimbus instead of the embedded LocalCluster.
 
 ## Devcontainer tasks
+- These commands rely on the [go-task](https://taskfile.dev/) runner. If it is not installed locally, either install it (`brew install go-task`, `scoop install task`, or download a binary from the releases page) or run them from within the devcontainer where it is preinstalled.
 - `task devcontainer`: build, start, and attach to the devcontainer (runs build → up → attach).
 - `task devcontainer-recreate`: force a teardown and rebuild from scratch.
 - `task devcontainer-build`: build only.
