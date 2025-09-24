@@ -17,6 +17,7 @@ dependencies {
 
     // This dependencies is used by the application.
     implementation(libs.storm)
+    implementation(libs.fasterxml) // to read JSON jokes dataset
 }
 
 // Apply a specific Java toolchain to ease working on different environments.
@@ -28,8 +29,15 @@ java {
 
 application {
     // Define the main class for the application.
-    mainClass = "org.apache.storm.example.ExampleTopology"
+    mainClass = "org.apache.storm.example.WordCountTopology"
 }
+
+sourceSets {
+    val main by getting {
+        resources.srcDirs("src/main/resources") // default resources directory
+    }
+}
+
 
 tasks.named<Test>("test") {
     // Use JUnit Platform for unit tests.

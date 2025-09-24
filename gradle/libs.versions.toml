@@ -4,7 +4,9 @@
 [versions]
 junit-jupiter = "5.10.3"
 storm = "2.8.2"
+fasterxml = "2.17.2"
 
 [libraries]
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit-jupiter" }
 storm = { module = "org.apache.storm:storm-core", version.ref = "storm" }
+fasterxml = { module = "com.fasterxml.jackson.core:jackson-databind", version.ref = "fasterxml" }
