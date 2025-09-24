@@ -6,12 +6,12 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.BufferedReader;
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.List;
-import java.util.Objects;
 
 public final class JokeReader {
 
@@ -49,8 +49,11 @@ public final class JokeReader {
     public List<Joke> readAll(String jsonResourceName) throws IOException {
         // Read from resources
         ClassLoader classloader = Thread.currentThread().getContextClassLoader();
-        // InputStream is = classloader.getResourceAsStream("test.csv");
-        try (BufferedReader br = Files.newBufferedReader(Path.of(Objects.requireNonNull(classloader.getResource(jsonResourceName)).getPath()), StandardCharsets.UTF_8)) {
+        InputStream resourceStream = classloader.getResourceAsStream(jsonResourceName);
+        if (resourceStream == null) {
+            throw new FileNotFoundException("Resource not found: " + jsonResourceName);
+        }
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(resourceStream, StandardCharsets.UTF_8))) {
             // Peek first non-whitespace char to decide format
             br.mark(8192);
             int ch;
