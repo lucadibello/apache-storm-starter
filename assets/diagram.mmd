@@ -1,0 +1,67 @@
+%%{init: {"flowchart": {"defaultRenderer": "elk","elk": {
+  "direction": "DOWN",
+  "alignment": "CENTER",
+  "mergeEdges": true,
+  "nodePlacementStrategy": "LINEAR_SEGMENTS"
+}}}}%%
+flowchart TB
+
+  subgraph Pipeline["Confidential Word Count Topology"]
+    direction TB
+
+    subgraph R["RandomJokeSpout ×2"]
+      direction TB
+      R1["Spout #1"]:::spoutNode
+      R2["Spout #2"]:::spoutNode
+    end
+    class R groupSpout
+
+    subgraph S["SplitSentenceBolt ×3"]
+      direction TB
+      S1["Split #1"]:::splitBolt
+      S2["Split #2"]:::splitBolt
+      S3["Split #3"]:::splitBolt
+    end
+    class S groupSplit
+
+    subgraph W["WordCounterBolt ×3"]
+      direction TB
+      W1["Counter #1"]:::wordBolt
+      W2["Counter #2"]:::wordBolt
+      W3["Counter #3"]:::wordBolt
+    end
+    class W groupWord
+
+    subgraph H["HistogramBolt ×1"]
+      H1["Histogram"]:::histBolt
+    end
+    class H groupHist
+
+    R1 --> S1
+    R1 --> S2
+    R1 --> S3
+
+    R2 --> S1
+    R2 --> S2
+    R2 --> S3
+
+    S1 --> W1
+    S2 --> W2
+    S3 --> W3
+
+    W1 --> H1
+    W2 --> H1
+    W3 --> H1
+  end
+  class Pipeline pipelineFrame
+
+  classDef spoutNode fill:#8ecae6,stroke:#2879a7,color:#0b2b3c,stroke-width:2px;
+  classDef splitBolt fill:#b2f2bb,stroke:#2f9e44,color:#18361b,stroke-width:1.5px;
+  classDef wordBolt fill:#ffe066,stroke:#f59f00,color:#5c3d00,stroke-width:1.5px;
+  classDef histBolt fill:#c8b6ff,stroke:#845ef7,color:#2f195f,stroke-width:1.5px;
+  classDef pipelineFrame fill:none,stroke:#adb5bd,stroke-width:1px,stroke-dasharray:6 4,color:#343a40;
+
+  style R fill:#8ecae6,fill-opacity:0.35,stroke:#2879a7,stroke-width:2px,color:#0b2b3c,padding:18px
+  style S fill:#b2f2bb,fill-opacity:0.32,stroke:#2f9e44,stroke-width:1px,color:#18361b,padding:18px
+  style W fill:#fff3bf,fill-opacity:0.38,stroke:#f59f00,stroke-width:1px,color:#5c3d00,padding:18px
+  style H fill:#e5dbff,fill-opacity:0.4,stroke:#845ef7,stroke-width:1px,color:#2f195f,padding:18px

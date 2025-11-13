@@ -13,37 +13,7 @@ Everything you need to prototype Apache Storm topologies quickly: a Gradle build
 
 ## Topology diagram
 
-```mermaid
-flowchart LR
-  subgraph R[RandomJokeSpout ×2]
-    R1[Spout #1]
-    R2[Spout #2]
-  end
-  subgraph S[SplitSentenceBolt ×3]
-    S1[Split #1]
-    S2[Split #2]
-    S3[Split #3]
-  end
-  subgraph W[WordCounterBolt ×3]
-    W1[Counter #1]
-    W2[Counter #2]
-    W3[Counter #3]
-  end
-  H[HistogramBolt ×1]
-
-  R1 --> S1
-  R1 --> S2
-  R1 --> S3
-  R2 --> S1
-  R2 --> S2
-  R2 --> S3
-  S1 --> W1
-  S2 --> W2
-  S3 --> W3
-  W1 --> H
-  W2 --> H
-  W3 --> H
-```
+![Storm Topology Diagram](assets/diagram.svg)
 
 Dataset source: <https://github.com/taivop/joke-dataset/blob/master/stupidstuff.json>
 
